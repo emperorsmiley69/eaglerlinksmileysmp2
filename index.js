@@ -3,24 +3,34 @@ const httpProxy = require('http-proxy');
 const localtunnel = require('localtunnel');
 
 const PORT = 3000; 
-// FIX: Added 'https://' protocol to prevent the split() null crash
-const TARGET = 'https://smileysmp.eagler.host';
+const TARGET = 'smileysmp.eagler.host';
 
 // 1. Build the backend WebSocket proxy server
 const proxy = httpProxy.createProxyServer({
   target: TARGET,
-  changeOrigin: true, // Changes the origin of the host header to the target URL
-  secure: false,      // CRITICAL: Prevents SSL/TLS handshake crashes with the external host
-  ws: true            // Enables WebSocket forwarding for Eaglercraft connections
+  changeOrigin: true, 
+  secure: false,      
+  ws: true            
 });
 
-// Handle proxy errors to prevent the node process from crashing dynamically
+// Handle proxy errors safely
 proxy.on('error', (err, req, res) => {
   console.error('Proxy Error:', err);
-  if (res && !res.headersSent) {
+  if (res && !res.headersSent && typeof res.writeHead === 'function') {
     res.writeHead(500, { 'Content-Type': 'text/plain' });
     res.end('Proxy error occurred.');
   }
+});
+
+// Automatically inject headers to bypass Localtunnel's landing warning page
+proxy.on('proxyReq', function(proxyReq, req, res, options) {
+  proxyReq.setHeader('bypass-tunnel-reminder', 'true');
+  proxyReq.setHeader('User-Agent', 'Mozilla/5.0');
+});
+
+proxy.on('proxyReqWs', function(proxyReq, req, socket, options, head) {
+  proxyReq.setHeader('bypass-tunnel-reminder', 'true');
+  proxyReq.setHeader('User-Agent', 'Mozilla/5.0');
 });
 
 const server = http.createServer((req, res) => {
