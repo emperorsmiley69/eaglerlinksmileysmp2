@@ -1,6 +1,6 @@
 const http = require('http');
 const httpProxy = require('http-proxy');
-const localtunnel = require('localtunnel');
+const ngrok = require('@ngrok/ngrok');
 
 const PORT = 3000; 
 const TARGET = 'https://smileysmp.eagler.host';
@@ -13,24 +13,13 @@ const proxy = httpProxy.createProxyServer({
   ws: true            
 });
 
-// Handle proxy errors safely
+// Handle proxy errors gracefully
 proxy.on('error', (err, req, res) => {
   console.error('Proxy Error:', err);
   if (res && !res.headersSent && typeof res.writeHead === 'function') {
     res.writeHead(500, { 'Content-Type': 'text/plain' });
     res.end('Proxy error occurred.');
   }
-});
-
-// Automatically inject headers to bypass Localtunnel's landing warning page
-proxy.on('proxyReq', function(proxyReq, req, res, options) {
-  proxyReq.setHeader('bypass-tunnel-reminder', 'true');
-  proxyReq.setHeader('User-Agent', 'Mozilla/5.0');
-});
-
-proxy.on('proxyReqWs', function(proxyReq, req, socket, options, head) {
-  proxyReq.setHeader('bypass-tunnel-reminder', 'true');
-  proxyReq.setHeader('User-Agent', 'Mozilla/5.0');
 });
 
 const server = http.createServer((req, res) => {
@@ -42,7 +31,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-// Forward the WebSocket 'upgrade' events safely
+// Forward WebSocket upgrade events
 server.on('upgrade', (req, socket, head) => {
   proxy.ws(req, socket, head, (err) => {
     console.error('WebSocket Proxy Error:', err);
@@ -53,18 +42,17 @@ server.on('upgrade', (req, socket, head) => {
 server.listen(PORT, '0.0.0.0', async () => {
   console.log(`Backend server active on internal port ${PORT}`);
 
-  // 2. Automatically launch Localtunnel inside Render's container
+  // 2. Automatically launch Ngrok inside Render's container
   try {
-    const tunnel = await localtunnel({ port: PORT });
+    const session = await new ngrok.SessionBuilder().authtokenFromEnv().connect();
+    const tunnel = await session.httpEndpoint().listen();
     
     console.log("=========================================");
-    console.log(`YOUR COPYABLE LINK: ${tunnel.url}`);
+    console.log(`YOUR COPYABLE LINK: ${tunnel.url()}`);
     console.log("=========================================");
 
-    tunnel.on('close', () => {
-      console.log("Tunnel connection lost.");
-    });
   } catch (error) {
-    console.error("Localtunnel initialization failed:", error);
+    console.error("Ngrok initialization failed:", error);
+    console.log("CRITICAL: Ensure NGROK_AUTHTOKEN is configured in Render Environment Variables.");
   }
 });
