@@ -3,7 +3,7 @@ const httpProxy = require('http-proxy');
 const localtunnel = require('localtunnel');
 
 const PORT = 3000; 
-const TARGET = 'smileysmp.eagler.host';
+const TARGET = 'https://smileysmp.eagler.host';
 
 // 1. Build the backend WebSocket proxy server
 const proxy = httpProxy.createProxyServer({
