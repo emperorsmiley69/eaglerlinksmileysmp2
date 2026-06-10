@@ -1,0 +1,12 @@
+{
+  "name": "eagler-proxy-localtunnel",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1",
+    "localtunnel": "^2.0.2"
+  }
+}
